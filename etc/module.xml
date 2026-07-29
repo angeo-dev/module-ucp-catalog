@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright (c) 2026 Ievgenii Gryshkun (angeo.dev)
+ * MIT License — see LICENSE for full terms.
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Module/etc/module.xsd">
+    <module name="Angeo_UcpCatalog">
+        <sequence>
+            <module name="Angeo_Ucp"/>
+            <module name="Magento_Catalog"/>
+            <module name="Magento_Store"/>
+        </sequence>
+    </module>
+</config>

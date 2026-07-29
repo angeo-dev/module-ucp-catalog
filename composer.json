@@ -1,0 +1,36 @@
+{
+  "name": "angeo/module-ucp-catalog",
+  "description": "UCP catalog.search and catalog.lookup service implementation for Magento 2 / Adobe Commerce \u2014 serves the REST endpoints advertised by angeo/module-ucp (spec 2026-04-08).",
+  "type": "magento2-module",
+  "version": "1.0.0",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Ievgenii Gryshkun",
+      "homepage": "https://angeo.dev"
+    }
+  ],
+  "keywords": [
+    "magento2",
+    "ucp",
+    "universal-commerce-protocol",
+    "agentic-commerce",
+    "aeo",
+    "catalog"
+  ],
+  "require": {
+    "php": "~8.2.0||~8.3.0",
+    "angeo/module-ucp": "^1.4",
+    "magento/framework": ">=103.0.6",
+    "magento/module-catalog": ">=104.0.6",
+    "magento/module-store": ">=101.1.6"
+  },
+  "autoload": {
+    "files": [
+      "registration.php"
+    ],
+    "psr-4": {
+      "Angeo\\UcpCatalog\\": ""
+    }
+  }
+}

@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright (c) 2026 Ievgenii Gryshkun (angeo.dev)
+ * MIT License — see LICENSE for full terms.
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <!--
+        Frontend router mapping the spec's REST paths onto controllers:
+            POST /ucp/v1/catalog/search  -> Controller\Catalog\Search
+            POST /ucp/v1/catalog/lookup  -> Controller\Catalog\Lookup
+        Registered in the frontend area only, same rationale as
+        Angeo_Ucp's well-known router.
+    -->
+    <type name="Magento\Framework\App\RouterList">
+        <arguments>
+            <argument name="routerList" xsi:type="array">
+                <item name="angeo_ucp_catalog" xsi:type="array">
+                    <item name="class" xsi:type="string">Angeo\UcpCatalog\Controller\Router</item>
+                    <item name="disable" xsi:type="boolean">false</item>
+                    <item name="sortOrder" xsi:type="string">21</item>
+                </item>
+            </argument>
+        </arguments>
+    </type>
+</config>
