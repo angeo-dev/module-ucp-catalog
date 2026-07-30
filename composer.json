@@ -2,7 +2,7 @@
   "name": "angeo/module-ucp-catalog",
   "description": "UCP catalog.search and catalog.lookup service implementation for Magento 2 / Adobe Commerce \u2014 serves the REST endpoints advertised by angeo/module-ucp (spec 2026-04-08).",
   "type": "magento2-module",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "license": "MIT",
   "authors": [
     {
