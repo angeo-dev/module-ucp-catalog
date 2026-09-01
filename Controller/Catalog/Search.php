@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Angeo\UcpCatalog\Controller\Catalog;
 
+use Angeo\Ucp\Api\SignatureVerifierInterface;
 use Angeo\Ucp\Model\Config as UcpConfig;
 use Angeo\UcpCatalog\Model\CatalogSearchService;
 use Angeo\UcpCatalog\Model\ResponseBuilder;
@@ -26,9 +27,17 @@ class Search extends AbstractCatalogAction
         RequestInterface $request,
         LoggerInterface  $logger,
         ResponseBuilder  $responseBuilder,
+        SignatureVerifierInterface $signatureVerifier,
         private readonly CatalogSearchService $searchService
     ) {
-        parent::__construct($resultFactory, $ucpConfig, $request, $logger, $responseBuilder);
+        parent::__construct(
+            $resultFactory,
+            $ucpConfig,
+            $request,
+            $logger,
+            $responseBuilder,
+            $signatureVerifier
+        );
     }
 
     protected function process(array $request): array

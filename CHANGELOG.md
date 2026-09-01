@@ -4,6 +4,33 @@ All notable changes to `angeo/module-ucp-catalog` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-08-28
+
+Requires `angeo/module-ucp: ^2.1`.
+
+### Added
+
+- **Inbound RFC 9421 signature verification** on `/catalog/search`,
+  `/catalog/lookup` and `/catalog/product`, using the verifier introduced in
+  `angeo/module-ucp` 2.1.0 and governed by the store's
+  *Request Security → Inbound Signature Verification* setting.
+
+  Until now these endpoints answered anyone who sent a POST. That is the gap
+  the specification addresses with a MUST: a business rejects a request whose
+  counterparty profile cannot be fetched or fails validation. Advertising
+  `catalog.search` in a signed profile while serving it unauthenticated is a
+  contradiction an agent has no way to detect.
+
+  Verification runs **before** any catalogue work, so a request that will be
+  rejected never reaches the product repository. Rejections return HTTP 401
+  with a spec-shaped `error_response` body carrying `ucp.status: "error"` and
+  the standard `unauthorized` code. The message is deliberately generic —
+  telling an unauthenticated caller which component failed helps it iterate
+  toward a forgery — while the specific reason goes to the log.
+
+  Default mode is `disabled`, so upgrading changes nothing until the setting is
+  turned on.
+
 ## [2.0.0] - 2026-08-28
 
 Adopts UCP spec release **2026-08-25** and, with it, turns the catalog

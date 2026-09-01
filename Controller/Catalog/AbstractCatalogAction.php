@@ -8,7 +8,9 @@ declare(strict_types=1);
 
 namespace Angeo\UcpCatalog\Controller\Catalog;
 
+use Angeo\Ucp\Api\SignatureVerifierInterface;
 use Angeo\Ucp\Model\Config as UcpConfig;
+use Angeo\Ucp\Model\Signature\VerificationResult;
 use Angeo\UcpCatalog\Model\ResponseBuilder;
 use Magento\Framework\App\Action\HttpPostActionInterface;
 use Magento\Framework\App\CsrfAwareActionInterface;
@@ -42,7 +44,8 @@ abstract class AbstractCatalogAction implements HttpPostActionInterface, CsrfAwa
         protected readonly UcpConfig        $ucpConfig,
         protected readonly RequestInterface $request,
         protected readonly LoggerInterface  $logger,
-        protected readonly ResponseBuilder  $responseBuilder
+        protected readonly ResponseBuilder  $responseBuilder,
+        protected readonly SignatureVerifierInterface $signatureVerifier
     ) {
     }
 
@@ -59,6 +62,13 @@ abstract class AbstractCatalogAction implements HttpPostActionInterface, CsrfAwa
         $body = $this->request instanceof HttpRequest
             ? (string) $this->request->getContent()
             : '';
+
+        // Authenticate before doing any work. A request that will be
+        // rejected should not first hit the catalogue.
+        $denied = $this->enforceSignaturePolicy();
+        if ($denied !== null) {
+            return $denied;
+        }
 
         if (strlen($body) > self::MAX_BODY_BYTES) {
             return $this->errorResponse(
@@ -104,6 +114,59 @@ abstract class AbstractCatalogAction implements HttpPostActionInterface, CsrfAwa
      * Whether the capability served by this action is declared in config.
      */
     abstract protected function isCapabilityDeclared(): bool;
+
+    /**
+     * Apply the store's inbound-signature policy (new in 2.1.0).
+     *
+     * The spec is explicit that a business MUST reject a request whose
+     * counterparty profile cannot be fetched or fails validation, so a
+     * signature that is present and does not verify is refused in every
+     * mode — including `optional`. What `optional` relaxes is only the
+     * absence of a signature.
+     *
+     * Returns null when the request may proceed.
+     */
+    protected function enforceSignaturePolicy(): ?ResultInterface
+    {
+        $mode = $this->ucpConfig->getInboundSignatureMode();
+
+        if ($mode === UcpConfig::SIGNATURE_MODE_DISABLED) {
+            return null;
+        }
+
+        if (!$this->request instanceof HttpRequest) {
+            return null;
+        }
+
+        $result = $this->signatureVerifier->verify($this->request);
+
+        if ($result->isVerified()) {
+            return null;
+        }
+
+        if ($result->isUnsigned() && $mode === UcpConfig::SIGNATURE_MODE_OPTIONAL) {
+            return null;
+        }
+
+        $this->logger->info(sprintf(
+            '[Angeo_UcpCatalog] Rejected a %s request in "%s" mode: %s',
+            $result->status,
+            $mode,
+            $result->reason !== '' ? $result->reason : 'no signature present'
+        ));
+
+        // 401 with a spec-shaped error body. The reason is deliberately
+        // generic: telling an unauthenticated caller which component failed
+        // helps it iterate towards a forgery.
+        return $this->errorResponse(
+            401,
+            $result->isUnsigned()
+                ? 'This endpoint requires a signed request (RFC 9421). '
+                    . 'Send Signature, Signature-Input and UCP-Agent headers.'
+                : 'Request signature could not be verified.',
+            'unauthorized'
+        );
+    }
 
     /**
      * Error body per types/error_response.json.

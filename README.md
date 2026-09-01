@@ -113,6 +113,15 @@ with `price_range` in minor units, `pagination.total_count`, and lookup
 variants carrying `inputs` correlation. With the module or capability
 disabled: a spec-shaped 404 body with `ucp.status = error`.
 
+## Request authentication (2.1.0)
+
+All three endpoints now verify inbound RFC 9421 signatures, governed by
+*Angeo UCP → Request Security → Inbound Signature Verification*. Verification
+runs before any catalogue work, and rejections return 401 with a spec-shaped
+`error_response` body.
+
+Default is `disabled`, so upgrading changes nothing until you turn it on.
+
 ## Upgrading from 1.x
 
 Requires `angeo/module-ucp:^2.0` — the two move together, since the
@@ -130,7 +139,7 @@ Nothing to configure. Expect these visible changes:
 
 ## Not implemented yet
 
-RFC 9421 response signing (`Signature` / `Signature-Input` /
+RFC 9421 *response* signing (`Signature` / `Signature-Input` /
 `Content-Digest`). `angeo/module-ucp` 2.0.0 publishes the keys for it,
 including Ed25519 for Web Bot Auth interop; the signing service is next.
 The `policies` and `actions` response members (both new and optional in
