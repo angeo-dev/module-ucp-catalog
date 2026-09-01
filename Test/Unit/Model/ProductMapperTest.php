@@ -11,7 +11,9 @@ namespace Angeo\UcpCatalog\Test\Unit\Model;
 use Angeo\UcpCatalog\Model\Cursor;
 use Angeo\UcpCatalog\Model\ProductMapper;
 use Angeo\UcpCatalog\Model\ResponseBuilder;
+use Angeo\UcpCatalog\Model\VariantResolver;
 use Magento\Catalog\Model\Product;
+use Psr\Log\NullLogger;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -19,16 +21,28 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(ProductMapper::class)]
 #[CoversClass(ResponseBuilder::class)]
 #[CoversClass(Cursor::class)]
+#[CoversClass(VariantResolver::class)]
 final class ProductMapperTest extends TestCase
 {
     private const MEDIA = 'https://shop.example.com/media/';
+
+    /**
+     * 2.0.0: ProductMapper delegates variant expansion to VariantResolver.
+     * These cases all use simple products, for which the resolver returns no
+     * children and the mapper falls back to a self-variant — so a real
+     * resolver with a null logger is the honest collaborator here.
+     */
+    private function mapper(): ProductMapper
+    {
+        return new ProductMapper(new VariantResolver(new NullLogger()));
+    }
 
     #[Test]
     public function mapped_product_carries_all_schema_required_fields(): void
     {
         // product.json required: id, title, description, price_range, variants;
         // variant required: id, title, description, price.
-        $mapped = (new ProductMapper())->map($this->product(), 'EUR', self::MEDIA);
+        $mapped = $this->mapper()->map($this->product(), 'EUR', self::MEDIA);
 
         foreach (['id', 'title', 'description', 'price_range', 'variants'] as $key) {
             self::assertArrayHasKey($key, $mapped);
@@ -41,7 +55,7 @@ final class ProductMapperTest extends TestCase
     #[Test]
     public function price_amount_is_in_minor_units(): void
     {
-        $mapped = (new ProductMapper())->map(
+        $mapped = $this->mapper()->map(
             $this->product(['final_price' => 19.99]),
             'EUR',
             self::MEDIA
@@ -55,7 +69,7 @@ final class ProductMapperTest extends TestCase
     #[Test]
     public function zero_decimal_currency_is_not_multiplied(): void
     {
-        $mapped = (new ProductMapper())->map(
+        $mapped = $this->mapper()->map(
             $this->product(['final_price' => 1500.0]),
             'JPY',
             self::MEDIA
@@ -69,7 +83,7 @@ final class ProductMapperTest extends TestCase
     {
         // description is REQUIRED on product and variant; empty catalogs
         // must still produce a schema-valid object.
-        $mapped = (new ProductMapper())->map(
+        $mapped = $this->mapper()->map(
             $this->product(['description' => '', 'short_description' => null]),
             'EUR',
             self::MEDIA
@@ -81,7 +95,7 @@ final class ProductMapperTest extends TestCase
     #[Test]
     public function html_description_is_stripped_to_plain(): void
     {
-        $mapped = (new ProductMapper())->map(
+        $mapped = $this->mapper()->map(
             $this->product(['description' => '<p>Great &amp; sturdy</p>']),
             'EUR',
             self::MEDIA
@@ -93,7 +107,7 @@ final class ProductMapperTest extends TestCase
     #[Test]
     public function gids_and_availability_are_mapped(): void
     {
-        $mapped = (new ProductMapper())->map(
+        $mapped = $this->mapper()->map(
             $this->product(['id' => 42, 'is_salable' => true]),
             'EUR',
             self::MEDIA
@@ -107,7 +121,7 @@ final class ProductMapperTest extends TestCase
     #[Test]
     public function media_entry_is_built_from_image_and_omitted_when_absent(): void
     {
-        $with = (new ProductMapper())->map(
+        $with = $this->mapper()->map(
             $this->product(['image' => '/t/w/widget.jpg']),
             'EUR',
             self::MEDIA
@@ -118,7 +132,7 @@ final class ProductMapperTest extends TestCase
         );
         self::assertSame('image', $with['media'][0]['type']);
 
-        $without = (new ProductMapper())->map(
+        $without = $this->mapper()->map(
             $this->product(['image' => 'no_selection']),
             'EUR',
             self::MEDIA
@@ -132,7 +146,9 @@ final class ProductMapperTest extends TestCase
         $builder = new ResponseBuilder();
 
         $withNext = $builder->searchResponse([], true, 'CURSOR');
-        self::assertSame('2026-04-08', $withNext['ucp']['version']);
+        self::assertSame('2026-08-25', $withNext['ucp']['version']);
+        // 2.0.0: status is stated explicitly rather than left to the default.
+        self::assertSame('success', $withNext['ucp']['status']);
         self::assertTrue($withNext['pagination']['has_next_page']);
         self::assertSame('CURSOR', $withNext['pagination']['cursor']);
 
@@ -145,7 +161,7 @@ final class ProductMapperTest extends TestCase
     public function input_correlation_is_attached_to_every_variant(): void
     {
         $builder = new ResponseBuilder();
-        $product = (new ProductMapper())->map($this->product(), 'EUR', self::MEDIA);
+        $product = $this->mapper()->map($this->product(), 'EUR', self::MEDIA);
 
         $correlated = $builder->withInputCorrelation($product, 'WID-001', 'exact');
 

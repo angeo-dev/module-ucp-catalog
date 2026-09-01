@@ -16,10 +16,11 @@ use Magento\Framework\App\RouterInterface;
 
 /**
  * Routes the UCP shopping REST paths (spec services/shopping/rest.openapi.json,
- * tag v2026-04-08) onto controllers:
+ * tag v2026-08-25) onto controllers:
  *
- *   POST {endpoint}/catalog/search -> Catalog\Search
- *   POST {endpoint}/catalog/lookup -> Catalog\Lookup
+ *   POST {endpoint}/catalog/search  -> Catalog\Search
+ *   POST {endpoint}/catalog/lookup  -> Catalog\Lookup
+ *   POST {endpoint}/catalog/product -> Catalog\Product   (new in 2.0.0)
  *
  * with {endpoint} = https://store.example.com/ucp/v1 (set this URL as
  * "Transport -> REST Endpoint URL" in Angeo_Ucp admin config so the profile
@@ -31,8 +32,9 @@ use Magento\Framework\App\RouterInterface;
 class Router implements RouterInterface
 {
     private const ROUTES = [
-        '/ucp/v1/catalog/search' => [\Angeo\UcpCatalog\Controller\Catalog\Search::class, 'search'],
-        '/ucp/v1/catalog/lookup' => [\Angeo\UcpCatalog\Controller\Catalog\Lookup::class, 'lookup'],
+        '/ucp/v1/catalog/search'  => [\Angeo\UcpCatalog\Controller\Catalog\Search::class, 'search'],
+        '/ucp/v1/catalog/lookup'  => [\Angeo\UcpCatalog\Controller\Catalog\Lookup::class, 'lookup'],
+        '/ucp/v1/catalog/product' => [\Angeo\UcpCatalog\Controller\Catalog\Product::class, 'product'],
     ];
 
     public function __construct(

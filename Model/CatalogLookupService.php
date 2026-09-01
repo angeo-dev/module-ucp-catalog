@@ -10,9 +10,7 @@ namespace Angeo\UcpCatalog\Model;
 
 use Magento\Catalog\Api\ProductRepositoryInterface;
 use Magento\Catalog\Model\Product;
-use Magento\Framework\Api\SearchCriteriaBuilder;
 use Magento\Framework\Exception\NoSuchEntityException;
-use Magento\Store\Model\StoreManagerInterface;
 
 /**
  * catalog.lookup over the Magento product repository.
@@ -23,8 +21,20 @@ use Magento\Store\Model\StoreManagerInterface;
  *   gid://magento/Product/{id}         -> match `featured`
  *   gid://magento/ProductVariant/{id}  -> match `exact`
  *   {sku}                              -> match `exact`
- * Unresolvable identifiers produce a warning message; the response omits
- * them (spec: "May contain fewer items if some identifiers not found").
+ * Unresolvable identifiers produce a warning; the response omits them
+ * (spec: "May contain fewer items if some identifiers not found").
+ *
+ * Changes in 2.0.0:
+ *  - A ProductVariant gid now resolves to its PARENT product with the child
+ *    marked as the matched variant, instead of returning the child as a
+ *    standalone product. That matters because 1.0.0 answered a variant
+ *    lookup with a product carrying one self-variant and no option axes —
+ *    an agent could not tell which of the parent's options it had just been
+ *    handed, which is the whole purpose of variant-level lookup.
+ *  - `inputs` correlation is attached only to the variant that actually
+ *    matched, not blanket-applied to every variant of the product. The
+ *    schema's match semantics (`exact` vs `featured`) are meaningless if
+ *    every variant claims the same one.
  */
 class CatalogLookupService
 {
@@ -32,10 +42,10 @@ class CatalogLookupService
 
     public function __construct(
         private readonly ProductRepositoryInterface $productRepository,
-        private readonly SearchCriteriaBuilder      $searchCriteriaBuilder,
-        private readonly StoreManagerInterface      $storeManager,
+        private readonly StoreContext               $storeContext,
         private readonly ProductMapper              $productMapper,
-        private readonly ResponseBuilder            $responseBuilder
+        private readonly ResponseBuilder            $responseBuilder,
+        private readonly CategoryResolver           $categoryResolver
     ) {
     }
 
@@ -51,19 +61,16 @@ class CatalogLookupService
         ));
         $ids = array_slice(array_unique($ids), 0, self::MAX_IDS);
 
-        $store        = $this->storeManager->getStore();
-        $currency     = (string) $store->getCurrentCurrencyCode();
-        $mediaBaseUrl = (string) $store->getBaseUrl(\Magento\Framework\UrlInterface::URL_TYPE_MEDIA);
-
+        $context  = $this->storeContext->resolve();
         $products = [];
         $messages = [];
 
         foreach ($ids as $requestedId) {
-            [$product, $match] = $this->resolve($requestedId);
+            $resolved = $this->resolve($requestedId);
 
-            if ($product === null) {
-                // Standard code per error_code.json examples; used here as a
-                // warning because partial lookup results are not an error.
+            if ($resolved === null) {
+                // Standard code per error_code.json; a warning rather than an
+                // error because a partial result is a legitimate outcome here.
                 $messages[] = $this->responseBuilder->warningMessage(
                     'not_found',
                     sprintf('Identifier "%s" not found.', $requestedId)
@@ -71,36 +78,140 @@ class CatalogLookupService
                 continue;
             }
 
-            $products[] = $this->responseBuilder->withInputCorrelation(
-                $this->productMapper->map($product, $currency, $mediaBaseUrl),
-                $requestedId,
-                $match
+            [$product, $matchedVariantId, $match] = $resolved;
+
+            $mapped = $this->productMapper->map(
+                $product,
+                $context->currency,
+                $context->mediaBaseUrl,
+                $this->categoryResolver->namesFor($product)
             );
+
+            $products[] = $this->correlate($mapped, $requestedId, $match, $matchedVariantId);
         }
 
         return $this->responseBuilder->lookupResponse($products, $messages);
     }
 
     /**
-     * @return array{0: ?Product, 1: string} [product or null, match type]
+     * Attach the `inputs` entry to the variant the identifier actually
+     * resolved to. lookup_variant REQUIRES `inputs` on every variant, so
+     * unmatched variants get an entry with the `featured` match semantics
+     * — the server chose to include them, which is exactly what `featured`
+     * describes.
+     *
+     * @param array<string, mixed> $product
+     * @return array<string, mixed>
      */
-    private function resolve(string $requestedId): array
+    private function correlate(
+        array $product,
+        string $requestedId,
+        string $match,
+        ?string $matchedVariantId
+    ): array {
+        if ($matchedVariantId === null) {
+            return $this->responseBuilder->withInputCorrelation($product, $requestedId, $match);
+        }
+
+        foreach ($product['variants'] as &$variant) {
+            $variant['inputs'][] = [
+                'id'    => $requestedId,
+                'match' => $variant['id'] === $matchedVariantId ? $match : 'featured',
+            ];
+        }
+        unset($variant);
+
+        return $product;
+    }
+
+    /**
+     * @return array{0: Product, 1: ?string, 2: string}|null
+     *         [product, matched variant gid or null, match type]
+     */
+    private function resolve(string $requestedId): ?array
     {
         if (preg_match('#^gid://magento/(Product|ProductVariant)/(\d+)$#', $requestedId, $m)) {
-            $match = $m[1] === 'ProductVariant' ? 'exact' : 'featured';
-            try {
-                $product = $this->productRepository->getById((int) $m[2]);
-                return [$product instanceof Product ? $product : null, $match];
-            } catch (NoSuchEntityException) {
-                return [null, $match];
+            $product = $this->loadById((int) $m[2]);
+            if ($product === null) {
+                return null;
             }
+
+            if ($m[1] === 'Product') {
+                return [$product, null, 'featured'];
+            }
+
+            // A variant gid: hand back the parent so the agent sees the full
+            // option context, flagging this child as the exact match.
+            $parent = $this->parentOf($product) ?? $product;
+
+            return [$parent, 'gid://magento/ProductVariant/' . (int) $product->getId(), 'exact'];
+        }
+
+        $product = $this->loadBySku($requestedId);
+        if ($product === null) {
+            return null;
+        }
+
+        $parent = $this->parentOf($product);
+        if ($parent !== null) {
+            return [$parent, 'gid://magento/ProductVariant/' . (int) $product->getId(), 'exact'];
+        }
+
+        return [$product, null, 'exact'];
+    }
+
+    /**
+     * The configurable parent of a simple product, when it has one.
+     *
+     * Resolved through the product's own type instance rather than a direct
+     * dependency on Magento\ConfigurableProduct\*, which is a removable
+     * module; an unavailable resolver degrades to "no parent".
+     */
+    private function parentOf(Product $product): ?Product
+    {
+        if ($product->getTypeId() !== 'simple') {
+            return null;
         }
 
         try {
-            $product = $this->productRepository->get($requestedId);
-            return [$product instanceof Product ? $product : null, 'exact'];
-        } catch (NoSuchEntityException) {
-            return [null, 'exact'];
+            $typeInstance = $product->getTypeInstance();
+            if (!method_exists($typeInstance, 'getParentIdsByChild')) {
+                return null;
+            }
+
+            $parentIds = $typeInstance->getParentIdsByChild($product->getId());
+        } catch (\Throwable) {
+            return null;
         }
+
+        if (!is_array($parentIds) || $parentIds === []) {
+            return null;
+        }
+
+        $parent = $this->loadById((int) reset($parentIds));
+
+        return $parent !== null && $parent->getTypeId() === 'configurable' ? $parent : null;
+    }
+
+    private function loadById(int $id): ?Product
+    {
+        try {
+            $product = $this->productRepository->getById($id);
+        } catch (NoSuchEntityException) {
+            return null;
+        }
+
+        return $product instanceof Product ? $product : null;
+    }
+
+    private function loadBySku(string $sku): ?Product
+    {
+        try {
+            $product = $this->productRepository->get($sku);
+        } catch (NoSuchEntityException) {
+            return null;
+        }
+
+        return $product instanceof Product ? $product : null;
     }
 }

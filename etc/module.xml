@@ -11,6 +11,13 @@
         <sequence>
             <module name="Angeo_Ucp"/>
             <module name="Magento_Catalog"/>
+            <!--
+                Sequenced, not required: Magento_ConfigurableProduct is a
+                removable module. VariantResolver duck-types against the
+                product's type instance so a store without it degrades to a
+                single self-variant instead of fataling.
+            -->
+            <module name="Magento_ConfigurableProduct"/>
             <module name="Magento_Store"/>
         </sequence>
     </module>

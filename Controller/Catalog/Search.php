@@ -10,6 +10,7 @@ namespace Angeo\UcpCatalog\Controller\Catalog;
 
 use Angeo\Ucp\Model\Config as UcpConfig;
 use Angeo\UcpCatalog\Model\CatalogSearchService;
+use Angeo\UcpCatalog\Model\ResponseBuilder;
 use Magento\Framework\App\RequestInterface;
 use Magento\Framework\Controller\ResultFactory;
 use Psr\Log\LoggerInterface;
@@ -24,14 +25,15 @@ class Search extends AbstractCatalogAction
         UcpConfig        $ucpConfig,
         RequestInterface $request,
         LoggerInterface  $logger,
+        ResponseBuilder  $responseBuilder,
         private readonly CatalogSearchService $searchService
     ) {
-        parent::__construct($resultFactory, $ucpConfig, $request, $logger);
+        parent::__construct($resultFactory, $ucpConfig, $request, $logger, $responseBuilder);
     }
 
     protected function process(array $request): array
     {
-        return $this->searchService->search($request);
+        return [200, $this->searchService->search($request)];
     }
 
     protected function isCapabilityDeclared(): bool
