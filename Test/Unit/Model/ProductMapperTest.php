@@ -22,7 +22,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(ResponseBuilder::class)]
 #[CoversClass(Cursor::class)]
 #[CoversClass(VariantResolver::class)]
-final class ProductMapperTest extends TestCase
+class ProductMapperTest extends TestCase
 {
     private const MEDIA = 'https://shop.example.com/media/';
 
@@ -208,7 +208,7 @@ final class ProductMapperTest extends TestCase
      */
     private function product(array $overrides = []): Product
     {
-        return new Product($overrides + [
+        return new TestProduct($overrides + [
             'id'          => 7,
             'sku'         => 'WID-001',
             'name'        => 'Test Widget',

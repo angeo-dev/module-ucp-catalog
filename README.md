@@ -1,5 +1,14 @@
 # Angeo UCP Catalog for Magento 2 (`angeo/module-ucp-catalog`)
 
+[![CI](https://github.com/angeo-dev/module-ucp-catalog/actions/workflows/ci.yml/badge.svg)](https://github.com/angeo-dev/module-ucp-catalog/actions/workflows/ci.yml)
+[![Packagist Version](https://img.shields.io/packagist/v/angeo/module-ucp-catalog)](https://packagist.org/packages/angeo/module-ucp-catalog)
+[![Downloads](https://img.shields.io/packagist/dt/angeo/module-ucp-catalog)](https://packagist.org/packages/angeo/module-ucp-catalog)
+[![PHP](https://img.shields.io/badge/PHP-8.1%20%E2%80%93%208.5-777bb4)](composer.json)
+[![Magento](https://img.shields.io/badge/Magento-2.4.6%20%E2%80%93%202.4.9-f26322)](composer.json)
+[![Mage-OS Directory](https://img.shields.io/badge/Mage--OS-Extension%20Directory-2d7d9a)](https://directory.mage-os.org/packages/angeo/module-ucp-catalog/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![UCP spec](https://img.shields.io/badge/UCP%20spec-2026--08--25-blue)](https://ucp.dev)
+
 The execution layer behind the UCP business profile advertised by
 [`angeo/module-ucp`](https://packagist.org/packages/angeo/module-ucp):
 implements `dev.ucp.shopping.catalog.search` and

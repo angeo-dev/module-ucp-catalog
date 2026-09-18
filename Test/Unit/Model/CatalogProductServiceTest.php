@@ -36,7 +36,7 @@ use Psr\Log\NullLogger;
  */
 #[CoversClass(CatalogProductService::class)]
 #[CoversClass(VariantResolver::class)]
-final class CatalogProductServiceTest extends TestCase
+class CatalogProductServiceTest extends TestCase
 {
     #[Test]
     public function unconstrained_request_features_a_purchasable_variant(): void
@@ -151,7 +151,7 @@ final class CatalogProductServiceTest extends TestCase
             $this->child(13, 'SHIRT-RED-S', 'Shirt Red / Small', 29.00, false, 102, 201),
         ];
 
-        $shirt = new Product([
+        $shirt = new TestProduct([
             'id' => 10, 'sku' => 'SHIRT', 'name' => 'Classic Shirt',
             'description' => 'A classic shirt.', 'final_price' => 29.00,
             'is_salable' => true, 'type_id' => 'configurable',
@@ -181,7 +181,7 @@ final class CatalogProductServiceTest extends TestCase
         int $color,
         int $size
     ): Product {
-        return new Product([
+        return new TestProduct([
             'id' => $id, 'sku' => $sku, 'name' => $name, 'description' => '',
             'final_price' => $price, 'is_salable' => $salable,
             'color' => $color, 'size' => $size,
@@ -239,71 +239,5 @@ final class CatalogProductServiceTest extends TestCase
         }
 
         self::fail('No option value labelled ' . $label);
-    }
-}
-
-/** Stands in for Magento's configurable type instance. */
-final class StubConfigurableType
-{
-    /**
-     * @param array<int, Product> $children
-     * @param array<int, array<string, mixed>> $attributes
-     */
-    public function __construct(
-        private readonly array $children,
-        private readonly array $attributes
-    ) {
-    }
-
-    public function getUsedProducts($product): array
-    {
-        return $this->children;
-    }
-
-    public function getConfigurableAttributesAsArray($product): array
-    {
-        return $this->attributes;
-    }
-}
-
-final class StubProductLoader extends ProductLoader
-{
-    /** @param array<string, array{0: ?Product, 1: ?string}> $byId */
-    public function __construct(private readonly array $byId)
-    {
-    }
-
-    public function load(string $identifier): array
-    {
-        return $this->byId[$identifier] ?? [null, null];
-    }
-}
-
-final class StubStoreContext extends StoreContext
-{
-    public function __construct()
-    {
-    }
-
-    public function resolve(): StoreContextData
-    {
-        return new StoreContextData('EUR', 'https://shop.example.com/media/');
-    }
-}
-
-final class StubCategoryResolver extends CategoryResolver
-{
-    public function __construct()
-    {
-    }
-
-    public function namesFor($product): array
-    {
-        return [];
-    }
-
-    public function idsForNames(array $names): array
-    {
-        return [];
     }
 }

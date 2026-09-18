@@ -11,7 +11,7 @@ namespace Angeo\UcpCatalog\Model;
 /**
  * Immutable store presentment context.
  */
-final class StoreContextData
+class StoreContextData
 {
     public function __construct(
         public readonly string $currency,

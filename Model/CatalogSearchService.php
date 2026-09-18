@@ -82,7 +82,7 @@ class CatalogSearchService
 
         $groups[] = $this->filterGroupBuilder->setFilters([
             $this->filterBuilder->setField('status')
-                ->setConditionType('eq')->setValue(Status::STATUS_ENABLED)->create(),
+                ->setConditionType('eq')->setValue((string) Status::STATUS_ENABLED)->create(),
         ])->create();
 
         $groups[] = $this->filterGroupBuilder->setFilters([
@@ -176,7 +176,7 @@ class CatalogSearchService
                     ->setField('price')
                     ->setConditionType($condition)
                     // Minor units back to the major units Magento stores.
-                    ->setValue($this->toMajorUnits((int) $price[$bound], $context->currency))
+                    ->setValue((string) $this->toMajorUnits((int) $price[$bound], $context->currency))
                     ->create(),
             ])->create();
         }

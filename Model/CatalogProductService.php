@@ -172,7 +172,7 @@ class CatalogProductService
                 if (count($working) < count($selections)) {
                     $dropped = array_map(
                         static fn (array $s): string => $s['name'],
-                        array_slice($working === [] ? $selections : $selections, count($working))
+                        array_slice($selections, count($working))
                     );
                     $messages[] = $this->responseBuilder->warningMessage(
                         'not_found',
