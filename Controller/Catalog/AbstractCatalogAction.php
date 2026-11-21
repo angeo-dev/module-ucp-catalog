@@ -155,16 +155,18 @@ abstract class AbstractCatalogAction implements HttpPostActionInterface, CsrfAwa
             $result->reason !== '' ? $result->reason : 'no signature present'
         ));
 
-        // 401 with a spec-shaped error body. The reason is deliberately
-        // generic: telling an unauthenticated caller which component failed
-        // helps it iterate towards a forgery.
+        // The spec's error code and status (signature_missing,
+        // signature_invalid, key_not_found: 401; digest_mismatch,
+        // algorithm_unsupported: 400 — 2.1.2, was always 401 "unauthorized").
+        // The message stays generic: telling an unauthenticated caller which
+        // component failed helps it iterate towards a forgery.
         return $this->errorResponse(
-            401,
+            $result->httpStatus(),
             $result->isUnsigned()
                 ? 'This endpoint requires a signed request (RFC 9421). '
                     . 'Send Signature, Signature-Input and UCP-Agent headers.'
                 : 'Request signature could not be verified.',
-            'unauthorized'
+            $result->code !== '' ? $result->code : VerificationResult::CODE_SIGNATURE_INVALID
         );
     }
 

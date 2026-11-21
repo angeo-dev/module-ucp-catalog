@@ -14,6 +14,13 @@ namespace Angeo\UcpCatalog\Model;
  */
 class Cursor
 {
+    /**
+     * Deepest page served (2.1.2). With the 50-item limit that is 10,000
+     * products; deeper cursors would only turn into large SQL OFFSETs that
+     * any caller can request for free.
+     */
+    public const MAX_PAGE = 200;
+
     public function encode(int $page): string
     {
         return rtrim(strtr(base64_encode(json_encode(['p' => $page])), '+/', '-_'), '=');
@@ -36,6 +43,6 @@ class Cursor
         $data = json_decode($decoded, true);
         $page = is_array($data) ? ($data['p'] ?? 1) : 1;
 
-        return is_int($page) && $page >= 1 ? $page : 1;
+        return is_int($page) && $page >= 1 && $page <= self::MAX_PAGE ? $page : 1;
     }
 }

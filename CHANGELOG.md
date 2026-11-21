@@ -4,6 +4,25 @@ All notable changes to `angeo/module-ucp-catalog` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.2] - 2026-11-21
+
+### Fixed
+
+- Signed requests from spec-conformant agents now verify — the fix is in
+  `angeo/module-ucp` 2.2.2 (`UCP-Agent` profile member, no `alg`), which
+  this release requires.
+- Signature failures answer with the spec's error codes and statuses
+  (`signature_missing`, `signature_invalid`, `key_not_found`: 401;
+  `digest_mismatch`, `algorithm_unsupported`: 400) instead of 401
+  `unauthorized`.
+- Search cursors stop at page 200 (`Cursor::MAX_PAGE`); a forged cursor no
+  longer turns into an unbounded SQL OFFSET.
+
+### Added
+
+- `SECURITY.md`.
+- `CursorTest`.
+
 ## [2.1.1] - 2026-09-15
 
 A code-quality release. Responses do not change.

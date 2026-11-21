@@ -121,7 +121,7 @@ class CatalogSearchService
             }
         }
 
-        $hasNext = ($page * $limit) < $totalCount;
+        $hasNext = ($page * $limit) < $totalCount && $page < Cursor::MAX_PAGE;
 
         return $this->responseBuilder->searchResponse(
             $products,
